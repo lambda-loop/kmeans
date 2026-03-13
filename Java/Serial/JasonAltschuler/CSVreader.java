@@ -35,7 +35,7 @@ public class CSVreader {
                throw new IllegalArgumentException("File has invalid dimensions (columns)");
          
             for (c = 0; c < columns; c++)
-               arr[r][c] = Double.parseDouble(x[c] + "\t");
+               arr[r][c] = Double.parseDouble(x[c]);
             
             r++;
          }
