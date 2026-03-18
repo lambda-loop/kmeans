@@ -11,6 +11,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as MV
 import Linear.V
 import Control.Monad.ST
+import Linear (distance)
 
 data RawData (d :: Natural) = RawData 
   { points    :: V.Vector (V d Double)
@@ -42,7 +43,7 @@ updateCentroids rawdata@RawData {..} = runST do
   counts <- MV.replicate k 0
 
   V.forM_ points \point -> do
-    let closestIdx = undefined -- V.minIndex @a @(k - 1) (distance point <$>)
+    let closestIdx = V.minIndex (distance point <$> centroids)
     MV.modify sums   (^+^ point) closestIdx
     MV.modify counts (+ 1)       closestIdx
 
