@@ -31,9 +31,9 @@ convergeAtMostIn :: KnownNat d => RawData d -> Int -> V.Vector (V d Double)
 RawData { centroids }`convergeAtMostIn` 0 = centroids 
 r@(RawData _ cs) `convergeAtMostIn` n 
   | cs == cs' = cs
-  | otherwise = r `convergeAtMostIn` (n-1)
+  | otherwise = r'`convergeAtMostIn` (n-1)
   where 
-    RawData _ cs' = updateCentroids r
+    r'@(RawData _ cs') = updateCentroids r
 
 -- TODO: State version or even ST for performance when?
 updateCentroids :: KnownNat d => RawData d  -> RawData d  
