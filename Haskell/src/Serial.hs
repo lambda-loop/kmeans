@@ -1,6 +1,7 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Serial2 where
+module Serial where
 
 import GHC.TypeNats
 
@@ -18,41 +19,65 @@ data RawData (d :: Natural) = RawData
 
 -- TODO: State version or even ST for performance when?
 updateCentroids :: KnownNat d => RawData d  -> RawData d  
-updateCentroids rawdata@RawData {..} = runST $ do
+updateCentroids rawdata@RawData {..} = runST do
   let k = V.length centroids
   sums   <- MV.replicate k zero
   counts <- MV.replicate k 0
 
-  V.forM_ points $ \point -> do
+  V.forM_ points \point -> do
     let closestIdx = undefined -- V.minIndex @a @(k - 1) (distance point <$>)
     MV.modify sums   (^+^ point) closestIdx
     MV.modify counts (+ 1)       closestIdx
 
-  cs <- V.generateM k $ \i -> do
+  cs <- V.generateM k \i -> do
     n <- MV.read counts i
     if n == 0
-      then pure $ centroids V.! i
+      then pure (centroids V.! i)
       else (^/ fromInteger n) <$> MV.read sums i
 
-  pure $ rawdata {
-    centroids = cs
-  }
+  pure rawdata { centroids = cs }
 
 initializeRawData :: KnownNat d => Int -> V.Vector (V d Double) -> RawData d 
-initializeRawData k points = runST $ do 
+initializeRawData k points = runST do 
   sums   <- MV.replicate k zero
   counts <- MV.replicate k 0
 
-  V.iforM_ points $ \i point -> do
-    MV.modify sums (^+^ point) i
-    MV.modify counts (+ 1) i
+  V.iforM_ points \i point -> do
+    let i' = i `mod` k
+    MV.modify sums (^+^ point) i'
+    MV.modify counts (+ 1) i'
 
-  cs <- V.generateM k $ \i -> 
+  cs <- V.generateM k \i -> 
     (^/) <$> MV.read sums i <*> MV.read counts i
 
   pure RawData { points    = points
                , centroids = cs 
                }
+
+convergeAtMostIn :: KnownNat d => RawData d -> Int -> V.Vector (V d Double)
+RawData { centroids }`convergeAtMostIn` 0 = centroids 
+r@(RawData _ cs) `convergeAtMostIn` n 
+  | cs == cs' = cs
+  | otherwise = r `convergeAtMostIn` (n-1)
+  where 
+    RawData _ cs' = updateCentroids r
+  
+kMeans :: KnownNat d 
+  => Int                   -- choosen k
+  -> Int                   -- max_iterations
+  -> V.Vector (V d Double) -- points 
+  -> V.Vector (V d Double) -- output clusters
+kMeans k n points = 
+  let rawdata = initializeRawData k points
+  in rawdata `convergeAtMostIn` n
+      
+
+
+
+
+
+  
+  
 
 
   
