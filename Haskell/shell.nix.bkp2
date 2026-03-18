@@ -1,0 +1,57 @@
+{ pkgs ? import <nixpkgs> {} }:
+
+let
+  # Selecionamos um conjunto de ferramentas Haskell
+  haskellTools = with pkgs.haskellPackages; [
+    cabal-install
+    ghcid
+    hlint
+    fourmolu   # ou ormolu, dependendo da preferência
+    implicit-hie
+    # haskell-language-server, mas vamos pegar do pacote específico
+  ];
+
+  # O HLS precisa ser compatível com a versão do GHC.
+  # Em nixpkgs, há um atributo haskell-language-server que é um pacote
+  # configurado para funcionar com o GHC padrão do haskellPackages.
+  # Se quisermos garantir a versão exata, podemos usar:
+  # hls = pkgs.haskell-language-server.override { supportedGhcVersions = [ "910" ]; };
+  # Mas o hls padrão já deve funcionar se o GHC for o mesmo.
+
+in
+pkgs.mkShell {
+  buildInputs = with pkgs; [
+    # GHC e bibliotecas C
+    (haskell.compiler.ghc910 or ghc)
+    blas
+    lapack
+    gfortran
+    zlib
+    gmp
+    pkg-config
+
+    # Ferramentas Haskell (incluindo HLS)
+    haskell-language-server   # isso é um pacote separado em pkgs, não haskellPackages
+  ] ++ (with haskellPackages; [
+    ghcid
+    hlint
+    fourmolu
+    implicit-hie
+    # se quiser mais ferramentas, adicione aqui
+  ]);
+
+  # Configuração de ambiente
+  shellHook = ''
+    # Caminhos para BLAS/LAPACK
+    export LIBRARY_PATH="${pkgs.blas}/lib:${pkgs.lapack}/lib:$LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${pkgs.blas}/lib:${pkgs.lapack}/lib:$LD_LIBRARY_PATH"
+
+    echo "Ambiente Haskell preparado com hmatrix e ferramentas de desenvolvimento:"
+    echo "  GHC: $(ghc --version)"
+    echo "  HLS: $(haskell-language-server --version || echo 'não encontrado')"
+    echo ""
+    echo "Ferramentas adicionais: ghcid, hlint, fourmolu, implicit-hie"
+    echo "Se o Neovim não encontrar o HLS, certifique-se de que o PATH está correto:"
+    echo "  PATH=$PATH"
+  '';
+}

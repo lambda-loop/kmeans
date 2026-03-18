@@ -1,0 +1,29 @@
+{ pkgs ? import <nixpkgs> {} }:
+
+pkgs.mkShell {
+
+  buildInputs = with pkgs; [
+    (haskell.compiler.ghc910 or ghc) 
+    cabal-install
+    pkg-config
+    gfortran      
+    blas          
+    lapack        
+    zlib          
+    gmp           
+  ];
+
+  shellHook = ''
+    export LIBRARY_PATH="${pkgs.blas}/lib:${pkgs.lapack}/lib:$LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${pkgs.blas}/lib:${pkgs.lapack}/lib:$LD_LIBRARY_PATH"
+
+    echo "BLAS, LAPACK avaiable in:"
+    echo "  ${pkgs.blas}/lib"
+    echo "  ${pkgs.lapack}/lib"
+
+    echo "AI disclaimer:"
+    echo "Se o Cabal ainda reclamar das bibliotecas, você pode passar os caminhos explicitamente:"
+    echo "  cabal configure --extra-lib-dirs=${pkgs.blas}/lib --extra-lib-dirs=${pkgs.lapack}/lib"
+    echo "Ou adicione essas linhas ao seu cabal.project.local."
+  '';
+}

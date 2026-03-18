@@ -83,6 +83,16 @@ executable k-means
                     -- in β:
                     , text
                     , lens 
+
+                    -- regular
+                    , massiv
+
+                    -- parallel
+                    , repa 
+
+
+                    -- blass lapack nix pls
+                    -- , hmatrix
       -- ^>=4.19.2.0
 
     -- Directories containing source files.

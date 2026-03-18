@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.Normalise #-}
 
 module Main where
 
@@ -7,27 +9,32 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Read as TR
 import qualified Data.Vector as VB
-import Linear.V (V(..))
+import Linear.V
 import Numeric.Natural (Natural)
-import Serial (kMeans')
+import Serial 
+import GHC.TypeLits (KnownNat)
+import qualified Data.Vector as V
+import GHC.TypeNats
+import Data.Data (Proxy(..))
 
 type V5 = V 5 Double
 
-parseV5 :: T.Text -> Either String V5
-parseV5 t =
+parseVs :: forall d. KnownNat d => T.Text -> Either String (V d Double)
+parseVs t =
   let fields = T.splitOn (T.pack ",") t
+      expectedDim = fromIntegral $ natVal (Proxy @d)
   in case traverse (TR.double . T.strip) fields of
       Right xs
-        | length xs == 5 ->
+        | length xs == expectedDim ->
             Right (V (VB.fromList (map fst xs)))
         | otherwise ->
-            Left "Linha inválida: esperado 5 colunas"
+            Left $ "Linha inválida: esperado " ++ show expectedDim ++ " colunas, mas recebi " ++ show (length xs)
       Left _ -> Left "Linha inválida: parse numérico falhou"
 
-readCSV5 :: FilePath -> IO [V5]
-readCSV5 fp = do
+readCSVs :: forall d. KnownNat d => FilePath -> IO [V d Double]
+readCSVs fp = do
   ls <- T.lines <$> T.readFile fp
-  case traverse parseV5 ls of
+  case traverse parseVs ls of
     Right ps -> pure ps
     Left e   -> fail e
 
@@ -35,9 +42,16 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    [file, kStr] -> do
-      let k :: Natural
+    [kStr, dStr, max_itersStr, file] -> do
+      let k :: Int
           k = read kStr
-      pts <- readCSV5 file
-      print (kMeans' k pts)
-    _ -> putStrLn "Uso: cabal run k-means -- <arquivo.csv> <k>"
+          dVal :: Natural
+          dVal = read dStr
+          max_iters = read max_itersStr
+
+      case someNatVal dVal of
+        SomeNat @d _ -> do
+          points <- readCSVs @d file 
+          print (kMeans k max_iters (V.fromList points))
+
+    _ -> putStrLn "Use: cabal run k-means -- <k> <d> <max_iters> <arquivo.csv>>"
