@@ -17,6 +17,23 @@ data RawData (d :: Natural) = RawData
   , centroids :: V.Vector (V d Double) -- TODO: check mutable version
   } 
 
+kMeans :: KnownNat d 
+  => Int                   -- choosen k
+  -> Int                   -- max_iterations
+  -> V.Vector (V d Double) -- points 
+  -> V.Vector (V d Double) -- output clusters
+kMeans k n points = 
+  let rawdata = initializeRawData k points
+  in rawdata `convergeAtMostIn` n
+
+convergeAtMostIn :: KnownNat d => RawData d -> Int -> V.Vector (V d Double)
+RawData { centroids }`convergeAtMostIn` 0 = centroids 
+r@(RawData _ cs) `convergeAtMostIn` n 
+  | cs == cs' = cs
+  | otherwise = r `convergeAtMostIn` (n-1)
+  where 
+    RawData _ cs' = updateCentroids r
+
 -- TODO: State version or even ST for performance when?
 updateCentroids :: KnownNat d => RawData d  -> RawData d  
 updateCentroids rawdata@RawData {..} = runST do
@@ -54,25 +71,7 @@ initializeRawData k points = runST do
                , centroids = cs 
                }
 
-convergeAtMostIn :: KnownNat d => RawData d -> Int -> V.Vector (V d Double)
-RawData { centroids }`convergeAtMostIn` 0 = centroids 
-r@(RawData _ cs) `convergeAtMostIn` n 
-  | cs == cs' = cs
-  | otherwise = r `convergeAtMostIn` (n-1)
-  where 
-    RawData _ cs' = updateCentroids r
   
-kMeans :: KnownNat d 
-  => Int                   -- choosen k
-  -> Int                   -- max_iterations
-  -> V.Vector (V d Double) -- points 
-  -> V.Vector (V d Double) -- output clusters
-kMeans k n points = 
-  let rawdata = initializeRawData k points
-  in rawdata `convergeAtMostIn` n
-      
-
-
 
 
 
